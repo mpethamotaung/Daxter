@@ -3,7 +3,7 @@ Daxter (OpenTax Agent Data Ingestion and AI Dashboard) is a project simulating a
 It aggregates financial/tax compliance data from multiple agent sources, persists it in a PostgreSQL database, and provides
 an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natural language queries and insights.
 
-##Tech Stack
+## Tech Stack
 | Component | Technology | Description |
 | --- | --- | --- |
 | Backend API | Python, FastAPI | High-performance, asynchronous API for data ingestion and serving. |
@@ -13,11 +13,11 @@ an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natu
 | State Mgt. | Redux Toolkit | Manages application state and data flow on the frontend. |
 | Orchestration | Docker Compose | Defines and runs the full multi-service environment (recommended setup). |
 
-##Setup Instruction (Recommended: Docker Compose)
+## Setup Instruction (Recommended: Docker Compose)
 The fastest and most reliable way to get all three services ( **db**, **backend**, and **frontend**) running simultaneously
 is using Docker Compose.
 
-###Prerequisites
+## Prerequisites
 **Git**
 **Docker Setup** (must be running)
 
