@@ -32,3 +32,13 @@ This design ensures separation of concerns, scalability, and independent deploym
 **Assumptions**
 
 - **No Authentication:** As this is an MVP, all authentication and authorization logic has been omitted to focus purely on the core data ingestion and AI interaction features.
+- **Development Environment:** The primary development environment is assumed to be **containerised** using Docker Compose for maximum consistency and ease of setup.
+- **External Agents are Mocked:** The "Agent Data Sources" are mocked external entities that will hit a single ingestion endpoint ( **/api/data-ingestion**).
+
+**Tradeoffs**
+
+| Decision | Rationale for Choice | Tradeoff Incurred |
+| --- | --- | --- |
+| FastAPI vs. Django | **High Performance & Minimalist.** FastAPI requires less boilerplate, allowing faster setup and development of micro-APIs. | Requires more manual configuration (e.g., routing, ORM setup) compared to the "batteries-included" nature of Django. |
+| Docker Isolation | **Reproducibility.** Ensures the exact same versions of Python, Node, and Postgres run everywhere. | Adds complexity to the initial setup (multiple Dockerfiles, Docker Compose config) and slight overhead during development compared to local binaries. |
+| Redux in Demo | Future Scalability. Prepares the UI for complex real-time data handling (dashboard metrics, live agent status). | **Overkill for a simple demo.** Increases boilerplate code for basic state management. |
