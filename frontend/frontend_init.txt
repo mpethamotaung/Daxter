@@ -1,0 +1,1 @@
+Next.js/React application, Redux, MUI

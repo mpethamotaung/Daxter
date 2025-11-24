@@ -1,0 +1,20 @@
+# Use a recommended Node version as the base image for Next.js
+FROM node:20-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the dependency file(s) first
+# This ensures a cached layer if dependencies don't change
+COPY package*.json ./
+
+# Install project dependencies
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# The Next.js application runs on port 3000 by default
+# EXPOSE 3000 
+
+# The entry command is defined in docker-compose.yml: 'npm run dev'

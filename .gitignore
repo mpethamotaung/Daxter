@@ -1,2 +1,4 @@
 #Separate Enviromentment Files
 .env
+
+frontend/node_modules/
