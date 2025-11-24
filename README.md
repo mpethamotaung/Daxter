@@ -68,21 +68,22 @@ If you prefer to run the frontend and backend services directly on your host mac
 
 1. **Backend Setup (Python/FastAPI)
    
-   **Create and Activate Conda Environment:**
+### Create and Activate Conda Environment:
    
    ```
    conda create -n daxter python=3.11
    conda activate daxter
    ```
    
-###Install Dependencies:
+### Install Dependencies:
 
-   ```
-   cd backend
-   pip install -r requirements.txt
-   cd ..
-   ```
-###**Set Environment Variables:** Seth the **DATABASE_URL** and **API-KEY** environment variables. If you are using Docker DB service (running on port 5433 - if you already have local PostgreSQL running on the default port 5432), use the following:
+```
+cd backend
+pip install -r requirements.txt
+cd ..
+```
+### Set Environment Variables: 
+Set the **DATABASE_URL** and **API-KEY** environment variables. If you are using Docker DB service (running on port 5433 - if you already have local PostgreSQL running on the default port 5432), use the following:
 
 ```
 # Set the DB URL using the local IP/port
