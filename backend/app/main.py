@@ -103,5 +103,3 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         # If the query fails for any reason (e.g., connection lost), return a failure status.
         logger.error(f"Health check failed due to DB query error: {e}")
         raise HTTPException(status_code=503, detail="Database connection failed during query execution")
-
-# Additional endpoints (e.g., /api/summary, /api/ai-assistant) will be added here later.
