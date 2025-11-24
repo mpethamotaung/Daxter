@@ -22,12 +22,37 @@ is using Docker Compose.
 **Docker Setup** (must be running)
 
 1. **Clone the Repository & Configure**
-  '''
+  ```
   #Clone the repository
   git clone https://github.com/mpethamotaung/Daxter
   cd daxter
 
   #Create the environment configuration file
   touch .env 
-  '''
-3.   sdfd 
+  ```
+2. **Configure .env File**
+Add the following variables to your newly created .env file. You can use the default database credentials for local testing.
+
+```
+# --- DATABASE CREDENTIALS (Used by docker-compose) ---
+POSTGRES_USER=daxter_user
+POSTGRES_PASSWORD=daxter_password
+POSTGRES_DB=daxter_db
+
+# --- AI API KEY (Required for AI features) ---
+# Replace with your actual LLM API key (e.g., Gemini API key)
+GEMINI_API_KEY=""
+```
+
+3. **Build and Run**
+   Run the following command from the root **daxter** directory. The first run will build the images and install all dependencies inside the containers.
+     
+```
+docker compose up --build
+```
+**Access Points**
+| Service | Address | Purpose |
+| --- | --- | --- |
+| Frontend | http://localhost:3000 | The main dashboard application. |
+| Backend API | http://localhost:8000 | FastAPI endpoints (e.g., /api/summary). |
+| Health Check | http://localhost:8000/api/health-check | Verifies server and database connection. |
