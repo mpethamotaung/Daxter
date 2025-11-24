@@ -18,7 +18,9 @@ The fastest and most reliable way to get all three services ( **db**, **backend*
 is using Docker Compose.
 
 ## Prerequisites
+
 **Git**
+
 **Docker Setup** (must be running)
 
 1. **Clone the Repository & Configure**
