@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
         
     yield
     
-    # Shutdown Events: Close any necessary resources (none required for this simple demo)
+    # Shutdown Events: Close any necessary resources 
     logger.info("Shutting down FastAPI application.")
 
 
