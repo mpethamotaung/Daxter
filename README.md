@@ -1,3 +1,8 @@
+
+<p align="center">
+  <img src="https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png" alt="Daxter Logo">
+</p>
+
 # Daxter Project: Accountant Aggregation and Insights Dashboard
 
 Daxter (OpenTax Agent Data Ingestion and AI Dashboard) is a project simulating a full-stack application for accountants. 
@@ -67,10 +72,10 @@ docker compose up --build
 If you prefer to run the frontend and backend services directly on your host machine, follow these steps.
 
 ### Prerequisites
-- **Git** \n
-- **Conda/Miniconda** (for Python environment) \n
-- **Node.js** (LTS version, frontend) \n
-- **PostgreSQL** (running locally, or use the Docker DB service, adjusting the URL) \n
+- **Git** 
+- **Conda/Miniconda** (for Python environment) 
+- **Node.js** (LTS version, frontend) 
+- **PostgreSQL** (running locally, or use the Docker DB service, adjusting the URL) 
 
 ### Backend Setup (Python/FastAPI)
    
