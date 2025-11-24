@@ -1,5 +1,7 @@
 
-<img align="center" width="100" height="100" src="https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png" alt="Daxter Logo">
+<p align="center">
+  <img src="https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png" alt="Daxter Logo">
+</p>
 
 # Daxter Project: Accountant Aggregation and Insights Dashboard
 
