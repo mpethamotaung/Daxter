@@ -15,3 +15,20 @@ This design ensures separation of concerns, scalability, and independent deploym
 | Presentation | Next.js, React.js, Material UI, Redux | Provides the user interface, manages client-side state, and handles API calls. |
 | Application Logic & AI | FastAPI, LangGraph, LLM API | Serves as the API gateway, contains all business logic, manages data ingestion, and orchestrates the AI agent workflows. |
 | Data | PostgreSQL, SQLAlchemy | Provides persistent, transactional storage for all ingested financial data and AI agent state/logs. |
+
+## Key Technology Choices & Rationale
+
+| Component | Technology | Rationale |
+| --- | --- | --- |
+| Backend API | FastAPI (Python) | Chosen for its high performance, native asynchronous support, and strong tooling with Pydantic for data validation. This is critical for high-throughput data ingestion and responsive API calls for the dashboard. |
+| Database | PostgreSQL | A mature, reliable, and highly scalable relational database, ideal for structured financial and compliance data. |
+| ORM & Driver | SQLAlchemy (async) & asyncpg | Provides robust, object-oriented interaction with the database. The asynchronous setup ensures the API server remains non-blocking during database operations. |
+| Frontend Framework | Next.js | Offers built-in routing, performance optimizations (SSR/SSG), and a strong foundation for a professional, scalable dashboard application. |
+| State Management | Redux Toolkit | Although complex for small projects, Redux provides centralized, predictable state management, which is essential for handling real-time data streams, dashboard synchronization, and AI chat history in a complex application. |
+| Orchestration | LangGraph | Specifically selected for its ability to define and manage complex, stateful, multi-step agentic workflows, moving beyond simple single-call RAG chains. |
+
+## Major Assumptions and Tradeoffs
+
+**Assumptions**
+
+- **No Authentication:** As this is an MVP, all authentication and authorization logic has been omitted to focus purely on the core data ingestion and AI interaction features.
