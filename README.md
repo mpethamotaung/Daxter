@@ -1,9 +1,11 @@
 # Daxter Project: Accountant Aggregation and Insights Dashboard
+
 Daxter (OpenTax Agent Data Ingestion and AI Dashboard) is a project simulating a full-stack application for accountants. 
 It aggregates financial/tax compliance data from multiple agent sources, persists it in a PostgreSQL database, and provides
 an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natural language queries and insights.
 
 ## Tech Stack
+
 | Component | Technology | Description |
 | --- | --- | --- |
 | Backend API | Python, FastAPI | High-performance, asynchronous API for data ingestion and serving. |
@@ -24,14 +26,14 @@ is using Docker Compose.
 - **Docker Setup** (must be running)
 
 1. **Clone the Repository & Configure**
-  ```
-  #Clone the repository
-  git clone https://github.com/mpethamotaung/Daxter
-  cd daxter
+```
+#Clone the repository
+git clone https://github.com/mpethamotaung/Daxter
+cd daxter
 
-  #Create the environment configuration file
-  touch .env 
-  ```
+#Create the environment configuration file
+touch .env 
+```
 2. **Configure .env File**
 Add the following variables to your newly created .env file. You can use the default database credentials for local testing.
 
@@ -52,7 +54,9 @@ GEMINI_API_KEY=""
 ```
 docker compose up --build
 ```
+
 **Access Points**
+
 | Service | Address | Purpose |
 | --- | --- | --- |
 | Frontend | http://localhost:3000 | The main dashboard application. |
@@ -70,21 +74,22 @@ If you prefer to run the frontend and backend services directly on your host mac
 
 ### Backend Setup (Python/FastAPI)
    
-### Create and Activate Conda Environment:
+**Create and Activate Conda Environment:**
    
-   ```
-   conda create -n daxter python=3.11
-   conda activate daxter
-   ```
+```
+conda create -n daxter python=3.11
+conda activate daxter
+```
    
-### Install Dependencies:
+**Install Dependencies:**
 
 ```
 cd backend
 pip install -r requirements.txt
 cd ..
 ```
-### Set Environment Variables: 
+**Set Environment Variables:**
+
 Set the **DATABASE_URL** and **API-KEY** environment variables. If you are using Docker DB service (running on port 5433 - if you already have local PostgreSQL running on the default port 5432), use the following:
 
 ```
@@ -95,17 +100,34 @@ export DATABASE_URL="postgresql://daxter_user:daxter_password@localhost:5433/dax
 export API_KEY="YOUR_ACTUAL_API_KEY_HERE"
 ```
 
-### **Run Migrations (Alembic):**
+**Run Migrations (Alembic):**
    Run containerised DB once to create tables, or connect to local DB and ensure the account_data table exists.
 
-### **Start the Backend Server:**
+**Start the Backend Server:**
 
 ```
 cd backend
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+### Frontend Setup (Next.js/React)
 
+1. Navigate and Install Dependecies:
+
+```
+cd frontend
+npm install
+```
+
+2. **Set Backend API URL:** The frontend expects the backend to be available at port 8000. This is configured manually internally in the Next.js setup, but you can override it with an environment variable if needed.
+   
+3. **Start the Frontend Server**:
+
+```
+npm run dev
+```
+
+The frontend will now be running at **http://localhost:3000**
 
 
 
