@@ -1,4 +1,5 @@
-![ Daxter Logo ](https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png)
+
+<img align="center" width="100" height="100" src="https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png" alt="Daxter Logo">
 
 # Daxter Project: Accountant Aggregation and Insights Dashboard
 
