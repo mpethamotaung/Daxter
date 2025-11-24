@@ -61,7 +61,8 @@ For the initial setup phase, the system handles the external **LLM API** connect
 
 - **Configuration:** The necessary endpoint is defined in the environment via the **API_KEY** in the **.env** file.
 - **Code Integrity:** The **backend/app/main.py** file successfully imports the required LangChain/LangGraph libraries, indicating the environment is provisioned for AI.
-- **Current Mocking:**
+- **Current Mocking:** The logic for AI interaction at **/api/ai-assistant** is **currently unemplemented**. The setup phase focuses on ensuring the database and API connectivity are working.
+- **Next Step (Implementation):** The full AI workflow will be implemented in a dedicated file **backend/app/agent.py**. If the **API_KEY** is not present which it is in this case, the agent logic will be designed to return a mocked response (e.g., a simple hardcoded string) or raise a specific 400 error, allowing the frontend to be developed without a live API key. This approach **mocks the result** until the API key is provided and the logic is fully functional.
 
 
 
