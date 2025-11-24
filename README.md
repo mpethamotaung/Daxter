@@ -1,3 +1,5 @@
+![ Daxter Logo ](https://github.com/mpethamotaung/Daxter/blob/main/images/Daxter-logo.png)
+
 # Daxter Project: Accountant Aggregation and Insights Dashboard
 
 Daxter (OpenTax Agent Data Ingestion and AI Dashboard) is a project simulating a full-stack application for accountants. 
