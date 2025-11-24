@@ -63,10 +63,10 @@ docker compose up --build
 If you prefer to run the frontend and backend services directly on your host machine, follow these steps.
 
 ### Prerequisites
-**Git** \n
-**Conda/Miniconda** (for Python environment) \n
-**Node.js** (LTS version, frontend) \n
-**PostgreSQL** (running locally, or use the Docker DB service, adjusting the URL) \n
+- **Git** \n
+- **Conda/Miniconda** (for Python environment) \n
+- **Node.js** (LTS version, frontend) \n
+- **PostgreSQL** (running locally, or use the Docker DB service, adjusting the URL) \n
 
 ### Backend Setup (Python/FastAPI)
    
