@@ -1,0 +1,63 @@
+
+
+services:
+  # ----------------------------------------
+  # 1. DATABASE SERVICE (PostgreSQL)
+  # ----------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: daxter_postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-daxter_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-daxter_password}
+      POSTGRES_DB: ${POSTGRES_DB:-daxter_db}
+    ports:
+      - "5433:5432" # Exposes DB port locally
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+  # ----------------------------------------
+  # 2. BACKEND SERVICE (Python/FastAPI)
+  # ----------------------------------------
+  backend:
+    build:
+      context: ./backend # Looks for Dockerfile in the 'backend' directory
+      dockerfile: Dockerfile.dev # We will create this development Dockerfile next
+    container_name: daxter_fastapi_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app # Mounts local code for hot reloading
+    ports:
+      - "8000:8000"
+    environment:
+      # Connects to the 'db' service using its service name
+      DATABASE_URL: postgresql://${POSTGRES_USER:-daxter_user}:${POSTGRES_PASSWORD:-daxter_password}@db:5432/${POSTGRES_DB:-daxter_db}
+      # Placeholder for LLM API Key
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      - db # Ensures database starts before the backend
+
+  # ----------------------------------------
+  # 3. FRONTEND SERVICE (Next.js/React)
+  # ----------------------------------------
+  frontend:
+    build:
+      context: ./frontend # Looks for Dockerfile in the 'frontend' directory
+      dockerfile: Dockerfile.dev
+    container_name: daxter_nextjs_frontend
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Important to prevent overwriting node_modules with host files
+    ports:
+      - "3000:3000"
+    environment:
+      # Directs frontend API calls to the exposed backend port
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+# Docker Volumes for persistent storage
+volumes:
+  postgres_data:
