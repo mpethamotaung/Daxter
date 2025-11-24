@@ -1,7 +1,7 @@
 # Daxter Project: Accountant Aggregation and Insights Dashboard
 Daxter (OpenTax Agent Data Ingestion and AI Dashboard) is a project simulating a full-stack application for accountants. 
 It aggregates financial/tax compliance data from multiple agent sources, persists it in a PostgreSQL database, and provides
-an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natural langugage queries and insights.
+an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natural language queries and insights.
 
 ##Tech Stack
 | Component | Technology | Description |
@@ -56,3 +56,72 @@ docker compose up --build
 | Frontend | http://localhost:3000 | The main dashboard application. |
 | Backend API | http://localhost:8000 | FastAPI endpoints (e.g., /api/summary). |
 | Health Check | http://localhost:8000/api/health-check | Verifies server and database connection. |
+
+## Local Setup (Alternative)
+If you prefer to run the frontend and backend services directly on your host machine, follow these steps.
+
+###Prerequisites
+**Git**
+**Conda/Miniconda** (for Python environment)
+**Node.js** (LTS version, frontend)
+**PostgreSQL** (running locally, or use the Docker DB service, adjusting the URL)
+
+1. **Backend Setup (Python/FastAPI)
+   
+   **Create and Activate Conda Environment:**
+   
+   ```
+   conda create -n daxter python=3.11
+   conda activate daxter
+   ```
+   
+###Install Dependencies:
+
+   ```
+   cd backend
+   pip install -r requirements.txt
+   cd ..
+   ```
+###**Set Environment Variables:** Seth the **DATABASE_URL** and **API-KEY** environment variables. If you are using Docker DB service (running on port 5433 - if you already have local PostgreSQL running on the default port 5432), use the following:
+
+```
+# Set the DB URL using the local IP/port
+export DATABASE_URL="postgresql://daxter_user:daxter_password@localhost:5433/daxter_db"
+
+# Set the AI Key
+export API_KEY="YOUR_ACTUAL_API_KEY_HERE"
+```
+
+### **Run Migrations (Alembic):**
+   Run containerised DB once to create tables, or connect to local DB and ensure the account_data table exists.
+
+### **Start the Backend Server:**
+
+```
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
