@@ -19,9 +19,9 @@ is using Docker Compose.
 
 ## Prerequisites
 
-**Git**
+- **Git**
 
-**Docker Setup** (must be running)
+- **Docker Setup** (must be running)
 
 1. **Clone the Repository & Configure**
   ```
