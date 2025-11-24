@@ -6,3 +6,5 @@ an interactive dashboard and an AI Assistant (powered by LangGraph/LLM) for natu
 ##Tech Stack
 | Component | Technology | Description |
 | --- | --- | --- |
+| Backend API | Python, FastAPI | High-performance, asynchronous API for data ingestion and serving. |
+| Database | PostgreSQL | Relational data persistence, accesed via *SQLAlchemy*.
