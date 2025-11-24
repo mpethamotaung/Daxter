@@ -42,3 +42,31 @@ This design ensures separation of concerns, scalability, and independent deploym
 | FastAPI vs. Django | **High Performance & Minimalist.** FastAPI requires less boilerplate, allowing faster setup and development of micro-APIs. | Requires more manual configuration (e.g., routing, ORM setup) compared to the "batteries-included" nature of Django. |
 | Docker Isolation | **Reproducibility.** Ensures the exact same versions of Python, Node, and Postgres run everywhere. | Adds complexity to the initial setup (multiple Dockerfiles, Docker Compose config) and slight overhead during development compared to local binaries. |
 | Redux in Demo | Future Scalability. Prepares the UI for complex real-time data handling (dashboard metrics, live agent status). | **Overkill for a simple demo.** Increases boilerplate code for basic state management. |
+
+## AI Workflow and Implementation Strategy
+
+**The AI Agent Layer**
+
+The core Ai feature is the natural language assistant accessible via the **/api/ai-assistant** endpoint. This is implemented using **LangGraph** to manage a multi-step workflow capable of:
+
+1. **Query Translation (Reasoning):** Translating the user's natural language question (e.g., "What was the total tax liability for clients in Q3?") into an executable structured tool call (e.g., a SQL query).
+
+2. **Tool Use (Action):** Executing the generated SQL query via **FastAPI/SQLAlchemy** agaist the PostgreSQL database.
+
+3. **Response Synthesis (Generation):** Taking the raw database result and synthesizing a natural language answer for the user.
+
+**LLM API Mocking Strategy**
+
+For the initial setup phase, the system handles the external **LLM API** connection as follows:
+
+- **Configuration:** The necessary endpoint is defined in the environment via the **API_KEY** in the **.env** file.
+- **Code Integrity:** The **backend/app/main.py** file successfully imports the required LangChain/LangGraph libraries, indicating the environment is provisioned for AI.
+- **Current Mocking:**
+
+
+
+
+
+
+
+
