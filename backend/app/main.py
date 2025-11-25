@@ -7,6 +7,11 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from typing import AsyncGenerator
 import logging
 
+#Imports for SQLAlchemy models and Pydantic schemas
+from sqlalchemy import select, func
+from . import models
+from .schemas import AccountantDataCreate, AccountantDataResponse, DashboardSummary
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,3 +108,72 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         # If the query fails for any reason (e.g., connection lost), return a failure status.
         logger.error(f"Health check failed due to DB query error: {e}")
         raise HTTPException(status_code=503, detail="Database connection failed during query execution")
+    
+# Add the Data Ingestion Endpoint
+@app.post(
+        "/api/data-intest",
+        response_model=AccountantDataResponse,
+        status_code=201,
+        tags=["Data Ingestion"]
+)
+
+async def ingest_agent_data(
+    data: AccountantDataCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Recieves and stores new financial data from an external agent system.
+    """
+    # 1. Convert Pydantic model data to SQLAlchemy model object
+    db_data = models.AccountantData(**data.model_dump())
+
+    # 2. Add to sessions and commit
+    db.add(db_data)
+    await db.commit()
+    await db.refresh(db_data) # Populate 'id' and 'data_ingested_at' fields
+
+    # 3. Return the created object, convert back to a Pydantic response schema
+    return db_data
+
+# Add the Dashboard Summary Endpoint 
+@app.get(
+    "/api/summary",
+    response_model=DashboardSummary,
+    tags=["Dashboard"]
+)
+async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
+    """
+    Returns key aggregated metrics for the dashboard view.
+    """
+
+    #Use SQLAlchemy functions for efficient database aggregation
+
+    # 1. Total Clients (Distinct client_name count)
+    total_clients_stmt = select(func.count(func.distinct(models.AccountantData.client_name)))
+    total_clients = (await db.execute(total_clients_stmt)).scalar_one_or_none() or 0
+
+    # 2. Financial Aggregation (Total Liability and Total Revenue)
+    financial_agg_stmt = select(
+        func.sum(models.AccountData.tax_liability),
+        func.sum(models.AccountData.total_revenue)
+    )
+    results = (await db.execute(financial_agg_stmt)).one_or_none()
+    total_tax_liability = results[0] if results and results[0] is not None else 0.0
+    total_revenue = results[1] if results and results[1] is not None else 0.0
+
+    # 3. Compliance Pending Count
+    pending_count_stmt = select(func.count(models.AccountData.id)).where(models.AccountData.compliance_status == "Pending")
+    pending_count = (await db.execute(pending_count_stmt)).scalar_one()
+
+    # 4. Last Ingestion Time
+    last_ingestion_stmt = select(func.max(models.AccountData.data_ingested_at))
+    last_ingestion = (await db.execute(last_ingestion_stmt)).scalar_one_or_none()
+
+    # Construct and return the summary response
+    return DashboardSummary(
+        total_clients=total_clients,
+        total_tax_liability_usd=total_tax_liability,
+        total_revenue_usd=total_revenue,
+        compliance_pending_count=pending_count,
+        last_ingestion_time=last_ingestion
+    )
