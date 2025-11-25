@@ -8,7 +8,7 @@ from typing import AsyncGenerator
 import logging
 
 #Imports for SQLAlchemy models and Pydantic schemas
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from . import models
 from .schemas import AccountantDataCreate, AccountantDataResponse, DashboardSummary
 
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
         # A simple check to confirm the database is reachable
         async with engine.connect() as conn:
             # Execute a simple query
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         logger.info("Successfully connected to the PostgreSQL database.")
     except OperationalError as e:
         logger.error(f"Failed to connect to the database on startup: {e}")
@@ -102,7 +102,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     try:
         # If the database session is successfully acquired, we can execute a simple query.
         # The 'get_db' dependency already handles basic acquisition, but this confirms execution.
-        await db.execute("SELECT 1") 
+        await db.execute(text("SELECT 1")) 
         return {"status": "OK", "database": "Connected"}
     except Exception as e:
         # If the query fails for any reason (e.g., connection lost), return a failure status.
