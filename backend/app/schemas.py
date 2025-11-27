@@ -1,8 +1,15 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
+from enum import Enum
 
 # --- INGESTION SCHEMAS ---
+
+# -- ENUMERATIONS ---
+class ComplianceStatus(str, Enum):
+    PENDING = "Pending"
+    APPROVED = "Approved"
+    REJECTED = "Rejected"
 
 class AccountantDataCreate(BaseModel):
     """Schema for incoming data from a data source/agent (POST request body)."""
@@ -13,6 +20,7 @@ class AccountantDataCreate(BaseModel):
     compliance_status: str = Field("Pending", description="Current compliance status (e.g., Pending, Approved).")
     data_period_start: datetime = Field(..., description="Start date of the financial data period.")
     data_period_end: datetime = Field(..., description="End date of the financial data period.")
+    compliance_status: ComplianceStatus = ComplianceStatus.PENDING
 
     class Config:
         # Enables conversion of SQLAlchemy models to Pydantic objects
@@ -35,3 +43,6 @@ class DashboardSummary(BaseModel):
     total_revenue_usd: float
     compliance_pending_count: int
     last_ingestion_time: Optional[datetime]
+
+
+

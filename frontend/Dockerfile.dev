@@ -15,6 +15,7 @@ RUN npm install
 COPY . .
 
 # The Next.js application runs on port 3000 by default
-# EXPOSE 3000 
+EXPOSE 3000 
 
 # The entry command is defined in docker-compose.yml: 'npm run dev'
+CMD ["npm", "run", "dev"]

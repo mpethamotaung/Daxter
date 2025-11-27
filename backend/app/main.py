@@ -9,7 +9,7 @@ import logging
 
 #Imports for SQLAlchemy models and Pydantic schemas
 from sqlalchemy import select, func, text
-from . import models
+from .models import AccountantData
 from .schemas import AccountantDataCreate, AccountantDataResponse, DashboardSummary
 
 # Set up logging
@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 # Read the DATABASE_URL from environment variables (set in docker-compose.yml)
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    logger.error("DATABASE_URL environment variable is not set.")
-    # Fallback/development URL for running outside of Docker (optional)
-    # exit(1) 
+    raise RuntimeError("DATABASE_URL environment variable is not set.")
+    
 
 # Adjust URL for async support if needed (FastAPI standard practice)
 ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
@@ -76,15 +75,18 @@ app = FastAPI(
 # --- Database Session Dependency ---
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency that provides an active database session."""
+    session = AsyncSessionLocal()
     try:
-        async with AsyncSessionLocal() as session:
             yield session
     except SQLAlchemyError as e:
         logger.error(f"Database error during session processing: {e}")
+        await session.rollback()
         raise HTTPException(status_code=500, detail="Database operation failed")
     except Exception as e:
         logger.error(f"An unexpected error occurred in get_db: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        await session.close()
 
 
 # --- API Endpoints ---
@@ -111,7 +113,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     
 # Add the Data Ingestion Endpoint
 @app.post(
-        "/api/data-intest",
+        "/api/data-ingest",
         response_model=AccountantDataResponse,
         status_code=201,
         tags=["Data Ingestion"]
@@ -125,7 +127,7 @@ async def ingest_agent_data(
     Recieves and stores new financial data from an external agent system.
     """
     # 1. Convert Pydantic model data to SQLAlchemy model object
-    db_data = models.AccountantData(**data.model_dump())
+    db_data = AccountantData(**data.model_dump())
 
     # 2. Add to sessions and commit
     db.add(db_data)
@@ -149,24 +151,24 @@ async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
     #Use SQLAlchemy functions for efficient database aggregation
 
     # 1. Total Clients (Distinct client_name count)
-    total_clients_stmt = select(func.count(func.distinct(models.AccountantData.client_name)))
+    total_clients_stmt = select(func.count(func.distinct(AccountantData.client_name)))
     total_clients = (await db.execute(total_clients_stmt)).scalar_one_or_none() or 0
 
     # 2. Financial Aggregation (Total Liability and Total Revenue)
     financial_agg_stmt = select(
-        func.sum(models.AccountData.tax_liability),
-        func.sum(models.AccountData.total_revenue)
+        func.sum(AccountantData.tax_liability),
+        func.sum(AccountantData.total_revenue)
     )
     results = (await db.execute(financial_agg_stmt)).one_or_none()
     total_tax_liability = results[0] if results and results[0] is not None else 0.0
     total_revenue = results[1] if results and results[1] is not None else 0.0
 
     # 3. Compliance Pending Count
-    pending_count_stmt = select(func.count(models.AccountData.id)).where(models.AccountData.compliance_status == "Pending")
+    pending_count_stmt = select(func.count(AccountantData.id)).where(AccountantData.compliance_status == "Pending")
     pending_count = (await db.execute(pending_count_stmt)).scalar_one()
 
     # 4. Last Ingestion Time
-    last_ingestion_stmt = select(func.max(models.AccountData.data_ingested_at))
+    last_ingestion_stmt = select(func.max(AccountantData.data_ingested_at))
     last_ingestion = (await db.execute(last_ingestion_stmt)).scalar_one_or_none()
 
     # Construct and return the summary response

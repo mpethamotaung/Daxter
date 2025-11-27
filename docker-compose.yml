@@ -8,52 +8,57 @@ services:
     image: postgres:15-alpine
     container_name: daxter_postgres_db
     restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-daxter_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-daxter_password}
-      POSTGRES_DB: ${POSTGRES_DB:-daxter_db}
+    env_file:
+      - .env
     ports:
-      - "5433:5432" # Exposes DB port locally
+      - "5433:5432"  # Exposes DB port locally for admin tools like pgAdmin or DBeaver
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-daxter_user} -d ${POSTGRES_DB:-daxter_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # ----------------------------------------
   # 2. BACKEND SERVICE (Python/FastAPI)
   # ----------------------------------------
   backend:
     build:
-      context: ./backend # Looks for Dockerfile in the 'backend' directory
-      dockerfile: Dockerfile.dev # We will create this development Dockerfile next
+      context: ./backend
+      dockerfile: Dockerfile.dev
     container_name: daxter_fastapi_backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
-      - ./backend:/app # Mounts local code for hot reloading
+      - ./backend:/app
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      # Connects to the 'db' service using its service name
-      DATABASE_URL: postgresql://${POSTGRES_USER:-daxter_user}:${POSTGRES_PASSWORD:-daxter_password}@db:5432/${POSTGRES_DB:-daxter_db}
-      # Placeholder for LLM API Key
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
-      - db # Ensures database starts before the backend
+      db:
+        condition: service_healthy
 
   # ----------------------------------------
   # 3. FRONTEND SERVICE (Next.js/React)
   # ----------------------------------------
   frontend:
     build:
-      context: ./frontend # Looks for Dockerfile in the 'frontend' directory
+      context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: daxter_nextjs_frontend
     command: npm run dev
     volumes:
       - ./frontend:/app
-      - /app/node_modules # Important to prevent overwriting node_modules with host files
+      - /app/node_modules
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      # Directs frontend API calls to the exposed backend port
       NEXT_PUBLIC_API_URL: http://localhost:8000
     depends_on:
       - backend

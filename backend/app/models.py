@@ -3,12 +3,13 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, func
 from .database import Base
 
-class AccountData(Base):
+
+class AccountantData(Base):
     """
     Represents aggregated and processed financial data from a single agent source.
     """
     __tablename__ = "accountant_data"
-
+    
     id = Column(Integer, primary_key=True, index=True)
 
     # Data Source/Agent Info
@@ -30,4 +31,4 @@ class AccountData(Base):
     ai_summary_hash = Column(String, nullable=True)
 
     def __repr__(self):
-        return f"<AccountData(id={repr(self.id)}, agent={repr(self.agent_id)}, liability={repr(self.tax_liability)})>"
+        return f"<AccountantData(id={repr(self.id)}, agent={repr(self.agent_id)}, liability={repr(self.tax_liability)})>"
