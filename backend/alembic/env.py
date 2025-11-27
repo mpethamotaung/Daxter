@@ -36,25 +36,44 @@ if config.config_file_name is not None:
 # ---
 def get_database_url() -> str:
     """Fetch the database URL and ensure async dialect is used.
-       CRITICAL FIX: Temporarily replaces 'db' with 'localhost' for host-based Alembic execution.
+       Prioritizes environment variable and minimally adjusts based on Docker context.
     """
     database_url = os.getenv("DATABASE_URL")
+    print(f"Raw DATABASE_URL from env: {database_url}")  # Debug log to see what's being read
     
     if not database_url:
-        # Local fallback, using localhost:5433 as in your original file
-        database_url = "postgresql+asyncpg://daxter_user:daxter_password@localhost:5433/daxter_db"
+        # Fallback if env var is not set
+        print("No DATABASE_URL in env, using fallback.")
+        database_url = "postgresql+asyncpg://daxter_user:daxter_password@localhost:5432/daxter_db"
     
     # Ensure async driver prefix
-    if database_url.startswith("postgresql://"):
+    if database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
-
-    # CRITICAL FIX for ConnectionRefusedError:
-    # If running Alembic on the host machine, replace the Docker hostname 'db'
-    # with 'localhost' and enforce the mapped port 5433 (based on your fallback).
-    if '@db:' in database_url:
-        # Example: '...user:pass@db:5432/...' becomes '...user:pass@localhost:5433/...'
-        database_url = database_url.replace('@db:', '@localhost:5433')
-        
+    
+    # If running in Docker, ensure 'db:5432'; else use local settings
+    if os.getenv("DOCKER_ENV") or 'docker' in os.getenv('HOSTNAME', '').lower():
+        print("Detected Docker environment.")
+        # Force 'db:5432' if not already set correctly
+        if '@localhost' in database_url:
+            database_url = database_url.replace('@localhost', '@db')
+        if ':5433' in database_url:
+            database_url = database_url.replace(':5433', ':5432')
+        elif ':5432' not in database_url and '@db:' in database_url:
+            # Ensure port is explicitly 5432
+            parts = database_url.split('/')
+            host_part = parts[0].rsplit(':', 1)[0] if ':' in parts[0] else parts[0]
+            database_url = f"{host_part}:5432/{parts[1]}" if len(parts) > 1 else f"{host_part}:5432/db"
+    else:
+        print("Detected local environment.")
+        # Local machine: force 'localhost:5432'
+        if '@db' in database_url:
+            database_url = database_url.replace('@db', '@localhost')
+        if ':5432' not in database_url and '@localhost' in database_url:
+            parts = database_url.split('/')
+            host_part = parts[0].rsplit(':', 1)[0] if ':' in parts[0] else parts[0]
+            database_url = f"{host_part}:5432/{parts[1]}" if len(parts) > 1 else f"{host_part}:5432/db"
+    
+    print(f"Final DATABASE_URL used: {database_url}")  # Debug log to see final URL
     return database_url
 
 # Metadata for 'autogenerate' support
