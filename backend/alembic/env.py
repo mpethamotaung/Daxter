@@ -39,7 +39,7 @@ def get_database_url() -> str:
        Prioritizes environment variable and minimally adjusts based on Docker context.
     """
     database_url = os.getenv("DATABASE_URL")
-    print(f"Raw DATABASE_URL from env: {database_url}")  # Debug log to see what's being read
+    
     
     if not database_url:
         # Fallback if env var is not set
