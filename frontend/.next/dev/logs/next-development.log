@@ -1,0 +1,14 @@
+[00:00:01.393] Server  LOG     
+[00:00:01.394] Server  LOG        We detected TypeScript in your project and created a tsconfig.json file for you.
+[00:00:01.662] Server  LOG      ✓ Ready in 1162ms
+[00:23:04.066] Server  LOG      ○ Compiling / ...
+[00:23:09.402] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:09.806] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:12.814] Server  LOG      ○ Compiling /_error ...
+[00:23:14.232] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:14.648] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:15.340] Browser ERROR   uncaughtError: Error: The default export is not a React Component in "/page"
+[00:23:15.941] Browser ERROR   uncaughtError: Error: The default export is not a React Component in "/page"
+[00:23:25.023] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:25.389] Server  ERROR    ⨯ Error: The default export is not a React Component in "/page"
+[00:23:25.756] Browser ERROR   uncaughtError: Error: The default export is not a React Component in "/page"
