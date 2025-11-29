@@ -17,7 +17,7 @@ interface SummaryData {
 const API_URL = process.env.NEXT_PUBLIC_API_URL + "/api/summary";
 
 // The main Dashboard component
-export default function Dashboard() { // <-- MUST be the default export
+export default function Dashboard() { 
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
