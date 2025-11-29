@@ -1,13 +1,16 @@
-// frontend/app/page.tsx 
+// frontend/app/page.tsx
+
+"use client"; // Mark as Client Component
 
 import Dashboard from './Dashboard';
+import ThemeWrapper from './ThemeWrapper'; // Direct import, no dynamic needed
 
-// The function exported here MUST be a valid React Component.
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      {/* Renders the client component */}
-      <Dashboard />
-    </main>
+    <ThemeWrapper>
+      <main className="min-h-screen bg-gray-100 p-8">
+        <Dashboard />
+      </main>
+    </ThemeWrapper>
   );
 }
