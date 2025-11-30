@@ -53,9 +53,11 @@ const fetchDashboardOverview = async (): Promise<DashboardOverview> => {
 const fetchAgentData = async (agentId: string): Promise<AgentData> => {
   const response = await fetch(`${API_BASE_URL}/agent-data/${agentId}`);
   if (!response.ok) {
+    //If API returns 404 (No data found for agent), return an empty structure
     if (response.status === 404) {
       return { agent_id: agentId, latest_raw_data_previews: [], ai_summaries: [] };
     }
+    // For any other error (500 Internal Server Error, etc.), throw an error
     throw new Error(`Failed to fetch data for agent ${agentId}`);
   }
   return response.json();

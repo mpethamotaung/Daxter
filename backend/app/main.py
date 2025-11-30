@@ -3,6 +3,7 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -11,7 +12,7 @@ import logging
 
 # Imports for SQLAlchemy models and Pydantic schemas
 from sqlalchemy import select, func, text
-from .models import AccountantData, DataSummary # Import DataSummary
+from .models import AccountantData, DataSummary 
 # Import all required schemas
 from .schemas import AccountantDataCreate, AccountantDataResponse, DashboardSummary, SummaryRequest, SummaryResponse
 # Import the new asynchronous agent logic module
@@ -69,6 +70,22 @@ app = FastAPI(
     lifespan=lifespan 
 )
 
+# --- 
+# CORS Configuration (<<< NEW SECTION) 
+# Allow the Next.js frontend running on port 3000 to access the API
+# ---
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000", 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Database Session Dependency ---
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
