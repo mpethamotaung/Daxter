@@ -2,3 +2,16 @@
 .env
 
 frontend/node_modules/
+.next/
+out/
+build/
+
+#Next.js cahe and build artifacts
+.next/cache/
+.next/server/
+.next/static/chunks/*.pack.gz
+.next/build-manifest.json
+.next/app-build-manifest.json
+.next/server/app-paths-manifest.json
+.next/prerender-manifest.json
+.next/react-loadable-manifest.json
