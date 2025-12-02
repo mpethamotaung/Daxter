@@ -10,6 +10,9 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from typing import AsyncGenerator, Dict, Any, List
 import logging
 
+#Import the new seeder function
+from .seeder import seed_database
+
 # Imports for SQLAlchemy models and Pydantic schemas
 from sqlalchemy import select, func, text
 from .models import AccountantData, DataSummary 
@@ -47,9 +50,18 @@ AsyncSessionLocal = sessionmaker(
 async def lifespan(app: FastAPI):
     logger.info("Starting up FastAPI application...")
     try:
+        # Check to confirm the database is reachable
         async with engine.connect() as conn:
+            # Execute a simple query 
             await conn.execute(text("SELECT 1"))
         logger.info("Successfully connected to the PostgreSQL database.")
+
+        # --- DATABASE SEEDING LOGIC ---
+        # Create a session specifically for seeding and commit mock data.
+        async with AsyncSessionLocal() as db_session:
+            await seed_database(db_session, num_agents=3, entries_per_agent=20)
+        logger.info("Database seeding configured for 60 total entries (3 agents x 20 entries each).")
+
     except OperationalError as e:
         logger.error(f"Failed to connect to the database on startup: {e}")
         pass
@@ -243,8 +255,8 @@ async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
 
     return DashboardSummary(
         total_clients=total_clients,
-        total_tax_liability_usd=total_tax_liability,
-        total_revenue_usd=total_revenue,
+        total_tax_liability_gbp=total_tax_liability,
+        total_revenue_gbp=total_revenue,
         compliance_pending_count=pending_count,
         last_ingestion_time=last_ingestion
     )
