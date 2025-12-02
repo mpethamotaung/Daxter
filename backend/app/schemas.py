@@ -39,8 +39,8 @@ class AccountantDataResponse(AccountantDataCreate):
 class DashboardSummary(BaseModel):
     """Schema for the aggregated summary data for the dashboard."""
     total_clients: int
-    total_tax_liability_usd: float
-    total_revenue_usd: float
+    total_tax_liability_gbp: float
+    total_revenue_gbp: float
     compliance_pending_count: int
     last_ingestion_time: Optional[datetime]
 

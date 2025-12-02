@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Alert, Button, Card, CardContent, CircularProgress, Container, Grid, Typography, Box, TextField } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GroupsIcon from '@mui/icons-material/Groups';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import WarningIcon from '@mui/icons-material/Warning';
 
 // --- Types (Matching Backend Schemas) ---
@@ -28,8 +28,8 @@ interface AISummary {
 
 interface DashboardOverview {
   total_clients: number;
-  total_tax_liability_usd: number;
-  total_revenue_usd: number;
+  total_tax_liability_gbp: number;
+  total_revenue_gbp: number;
   compliance_pending_count: number;
   last_ingestion_time: string | null;
 }
@@ -72,6 +72,17 @@ const generateAISummary = async (agentId: string, summaryType: string) => {
   if (!response.ok) throw new Error('Failed to trigger AI summary');
   return response.json();
 };
+
+// --- Helper Functions ---
+const formatCurrency = (amount: number, currency: string = 'GBP'): string => {
+  const formatter = new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return formatter.format(amount);
+  };
 
 // --- Helper Components ---
 
@@ -176,7 +187,10 @@ const DaxterDashboard: React.FC = () => {
           <StatCard title="Total Clients" value={overview?.total_clients.toString() || 'N/A'} icon={<GroupsIcon color="primary" />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard title="Total Revenue (USD)" value={`$${overview?.total_revenue_usd.toFixed(2) || '0.00'}`} icon={<AttachMoneyIcon color="success" />} />
+          <StatCard 
+              title="Total Revenue (GBP)" 
+              value={formatCurrency(overview?.total_revenue_gbp || 0)} 
+              icon={<AccountBalanceWalletIcon color="success" />} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard title="Pending Compliance" value={overview?.compliance_pending_count.toString() || 'N/A'} icon={<WarningIcon color="warning" />} />
@@ -285,7 +299,7 @@ const DaxterDashboard: React.FC = () => {
                           <tr key={data.id}>
                             <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{data.id}</td>
                             <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{data.client_name}</td>
-                            <td style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #f0f0f0' }}>${data.total_revenue.toFixed(2)}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{formatCurrency(data.total_revenue)}</td>
                             <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{new Date(data.data_ingested_at).toLocaleTimeString()}</td>
                           </tr>
                         ))}
