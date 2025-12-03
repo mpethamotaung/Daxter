@@ -15,4 +15,4 @@ Frontend/.next/react-loadable-manifest.json
 # Backend (Python/FastAPI)
 __pycache__/
 *.pyc/
-daxter.db 
+backend/daxter.db
