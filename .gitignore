@@ -1,21 +1,18 @@
-#Separate Enviromentment Files
-.env
+# Frontend (Next.js)
+Frontend/node_modules/
+Frontend/.next/
+Frontend/out/
+Frontend/build/
+Frontend/.next/cache/
+Frontend/.next/server/
+Frontend/.next/static/chunks/*.pack.gz
+Frontend/.next/build-manifest.json
+Frontend/.next/app-build-manifest.json
+Frontend/.next/server/app-paths-manifest.json
+Frontend/.next/prerender-manifest.json
+Frontend/.next/react-loadable-manifest.json
 
-frontend/node_modules/
-.next/
-out/
-build/
-
-#Next.js cahe and build artifacts
-.next/cache/
-.next/server/
-.next/static/chunks/*.pack.gz
-.next/build-manifest.json
-.next/app-build-manifest.json
-.next/server/app-paths-manifest.json
-.next/prerender-manifest.json
-.next/react-loadable-manifest.json
-
-# Pycache files
-**__pycache__/
-*.pyc
+# Backend (Python/FastAPI)
+Backend/__pycache__/
+Backend/*.pyc
+Backend/daxter.db  # SQLite DB file (local testing)

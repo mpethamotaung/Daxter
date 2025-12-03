@@ -1,27 +1,5 @@
-# CORE WEB FRAMEWORK
 fastapi
 uvicorn[standard]
-
-# DATABASE
-sqlalchemy  # ORM for data interaction
-psycopg2-binary  # PostgreSQL adapter
-alembic  # For database migrations
-asyncpg  # Required for asynchronous PostgreSQL connections with SQLAlchemy
-
-
-# AI & AGENT WORKFLOW
-langgraph
-langchain
-langchain-community
-langsmith  # For observability and tracking agent runs
-
-# LLM INTEGRATION (Replace with your chosen LLM provider)
-google-genai # Example for Gemini API
-
-# DATA VALIDATION (Used implicitly by FastAPI/Pydantic)
-pydantic
-pydantic-settings
-
-# TESTING & DEVELOPMENT
-pytest
-httpx  # For testing async FastAPI endpoints
+SQLAlchemy==2.0.*
+pydantic>=2.0
+python-dateutil

@@ -1,323 +1,347 @@
-// frontend/app/Dashboard.tsx
 'use client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { format } from 'date-fns';
+import { useState } from 'react';
 
-import React, { useState, useEffect, useCallback } from 'react';
-// Assuming you have a basic way to handle icons, e.g., react-icons or simple text
-// Since you are using MUI, you would typically import Icons here (e.g., from @mui/icons-material)
-import { Alert, Button, Card, CardContent, CircularProgress, Container, Grid, Typography, Box, TextField } from '@mui/material';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import GroupsIcon from '@mui/icons-material/Groups';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import WarningIcon from '@mui/icons-material/Warning';
+interface Payment { id: number; amount: number; date: string; status: string; }
+interface Invoice { id: number; amount: number; date: string; status: string; }
+interface Summary { total_payments: number; unpaid_invoices: number; monthly: { month: number; total: number }[]; }
+interface Log { type: string; timestamp: string; error?: string; prompt?: string; response?: string; count?: number; }
 
-// --- Types (Matching Backend Schemas) ---
-interface AccountantDataPreview {
-  id: number;
-  client_name: string;
-  tax_liability: number;
-  total_revenue: number;
-  data_ingested_at: string;
-}
-
-interface AISummary {
-  summary_type: string;
-  text: string;
-  created_at: string;
-  workflow_id: string; 
-}
-
-interface DashboardOverview {
-  total_clients: number;
-  total_tax_liability_gbp: number;
-  total_revenue_gbp: number;
-  compliance_pending_count: number;
-  last_ingestion_time: string | null;
-}
-
-interface AgentData {
-  agent_id: string;
-  latest_raw_data_previews: AccountantDataPreview[];
-  ai_summaries: AISummary[];
-}
-
-const API_BASE_URL = 'http://localhost:8000/api';
-
-// --- API Client Functions ---
-
-const fetchDashboardOverview = async (): Promise<DashboardOverview> => {
-  const response = await fetch(`${API_BASE_URL}/summary`);
-  if (!response.ok) throw new Error('Failed to fetch dashboard overview');
-  return response.json();
+// Fetchers for API endpoints
+const fetchPayments = async (offset = 0, limit = 10, status = ''): Promise<Payment[]> => {
+  let url = `/api/payments?offset=${offset}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Payments fetch failed');
+  return res.json();
 };
 
-const fetchAgentData = async (agentId: string): Promise<AgentData> => {
-  const response = await fetch(`${API_BASE_URL}/agent-data/${agentId}`);
-  if (!response.ok) {
-    //If API returns 404 (No data found for agent), return an empty structure
-    if (response.status === 404) {
-      return { agent_id: agentId, latest_raw_data_previews: [], ai_summaries: [] };
-    }
-    // For any other error (500 Internal Server Error, etc.), throw an error
-    throw new Error(`Failed to fetch data for agent ${agentId}`);
-  }
-  return response.json();
+const fetchInvoices = async (offset = 0, limit = 10, status = ''): Promise<Invoice[]> => {
+  let url = `/api/invoices?offset=${offset}&limit=${limit}`;
+  if (status) url += `&status=${status}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Invoices fetch failed');
+  return res.json();
 };
 
-const generateAISummary = async (agentId: string, summaryType: string) => {
-  const response = await fetch(`${API_BASE_URL}/ai-summary`, {
+const fetchSummary = async (): Promise<Summary> => {
+  const res = await fetch('/api/summary');
+  if (!res.ok) throw new Error('Summary fetch failed');
+  return res.json();
+};
+
+const fetchLogs = async (): Promise<Log[]> => {
+  const res = await fetch('/api/agent-logs?limit=15');
+  if (!res.ok) throw new Error('Logs fetch failed');
+  return res.json();
+};
+
+const postAIQuery = async (query: string): Promise<{ response: string }> => {
+  const res = await fetch('/api/ai-assistant', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agent_id: agentId, summary_type: summaryType }),
+    body: JSON.stringify({ query }),
   });
-  if (!response.ok) throw new Error('Failed to trigger AI summary');
-  return response.json();
+  if (!res.ok) throw new Error('AI query failed');
+  return res.json();
 };
 
-// --- Helper Functions ---
-const formatCurrency = (amount: number, currency: string = 'GBP'): string => {
-  const formatter = new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+export default function Dashboard() {
+  // State for pagination and filtering
+  const [paymentsOffset, setPaymentsOffset] = useState(0);
+  const [invoicesOffset, setInvoicesOffset] = useState(0);
+  const [paymentsStatus, setPaymentsStatus] = useState('');
+  const [invoicesStatus, setInvoicesStatus] = useState('');
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiHistory, setAiHistory] = useState<{ q: string; r: string }[]>([]);
+  const [selectedBar, setSelectedBar] = useState<number | null>(null);
+  const limit = 10; // Per page
+
+  // Data queries
+  const { data: summary, isLoading: sLoading, isError: sError } = useQuery({
+    queryKey: ['summary'],
+    queryFn: fetchSummary,
+    //onError: (error) => console.error('Summary fetch error:', error),
   });
-  return formatter.format(amount);
+
+  const { data: payments, isLoading: pLoading, isError: pError } = useQuery({
+    queryKey: ['payments', paymentsOffset, paymentsStatus],
+    queryFn: () => fetchPayments(paymentsOffset, limit, paymentsStatus),
+  });
+
+  const { data: invoices, isLoading: iLoading, isError: iError } = useQuery({
+    queryKey: ['invoices', invoicesOffset, invoicesStatus],
+    queryFn: () => fetchInvoices(invoicesOffset, limit, invoicesStatus),
+  });
+
+  const { data: logs, isLoading: lLoading, isError: lError } = useQuery({
+    queryKey: ['logs'],
+    queryFn: fetchLogs,
+    refetchInterval: 5000, // Auto-refresh every 5s
+  });
+
+  const queryClient = useQueryClient();
+  const aiMutation = useMutation({
+    mutationFn: postAIQuery,
+    onSuccess: (data) => {
+      setAiHistory(prev => [{ q: aiQuery, r: data.response }, ...prev.slice(0, 4)]);
+      setAiQuery('');
+      queryClient.invalidateQueries({ queryKey: ['logs'] }); // Refresh logs after AI call
+    },
+  });
+
+  // Handlers
+  const handleBarClick = (data: any, index: number) => {
+    setSelectedBar(index === selectedBar ? null : index);
+  };
+  const handleAiSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (aiQuery.trim()) aiMutation.mutate(aiQuery);
   };
 
-// --- Helper Components ---
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactElement }> = ({ title, value, icon }) => (
-  <Card variant="outlined">
-    <CardContent>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography color="textSecondary" gutterBottom>
-          {title}
-        </Typography>
-        {icon}
-      </Box>
-      <Typography variant="h4" component="div" sx={{ mt: 1 }}>
-        {value}
-      </Typography>
-    </CardContent>
-  </Card>
-);
-
-
-// --- Main Dashboard Component ---
-
-const DaxterDashboard: React.FC = () => {
-  const [overview, setOverview] = useState<DashboardOverview | null>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('AGENT-101'); // Default test agent
-  const [inputAgentId, setInputAgentId] = useState<string>('AGENT-101');
-  const [agentData, setAgentData] = useState<AgentData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [aiLoading, setAILoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [aiStatus, setAIStatus] = useState<string | null>(null);
-
-  // Function to load all necessary data for the current agent
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [overviewData, agentDetailData] = await Promise.all([
-        fetchDashboardOverview(),
-        fetchAgentData(selectedAgentId),
-      ]);
-      setOverview(overviewData);
-      setAgentData(agentDetailData);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'An unknown error occurred while fetching dashboard data.');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedAgentId]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Handler for triggering AI Analysis
-  const handleAITrigger = async (summaryType: string) => {
-    setAILoading(true);
-    setAIStatus(`Running AI ${summaryType}...`);
-    setError(null);
-    try {
-      await generateAISummary(selectedAgentId, summaryType);
-      setAIStatus('AI Summary successfully generated!');
-      // Refresh the agent detail view to show the new summary
-      await loadData(); 
-    } catch (err: any) {
-      setAIStatus(null);
-      setError(`AI Error: ${err.message}`);
-    } finally {
-      setAILoading(false);
-      setTimeout(() => setAIStatus(null), 5000); // Clear status after 5s
-    }
-  };
-
-  const handleFetchAgent = () => {
-    setSelectedAgentId(inputAgentId);
-  };
-
-
-  if (loading && !overview) {
-    return (
-      <Container maxWidth="xl" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>Loading Daxter Dashboard...</Typography>
-      </Container>
-    );
-  }
+  // Loading/Error UI
+  if (sLoading) return <div className="p-6 text-center">Loading dashboard...</div>;
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom sx={{ mb: 4, fontWeight: 'bold' }}>
-        OpenTax Unified Accountant Dashboard
-      </Typography>
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Daxter Accountant Dashboard</h1>
 
-      {/* Error and Status Messages */}
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-      {aiStatus && <Alert severity="info" sx={{ mb: 3 }}>{aiStatus}</Alert>}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-lg font-semibold text-gray-700">Total Payments</h2>
+          <p className="text-2xl font-bold text-green-600">
+            {sError ? 'Error' : `$${summary?.total_payments.toFixed(2) || '0.00'}`}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-lg font-semibold text-gray-700">Unpaid Invoices</h2>
+          <p className="text-2xl font-bold text-red-600">
+            {sError ? 'Error' : `$${summary?.unpaid_invoices.toFixed(2) || '0.00'}`}
+          </p>
+        </div>
+      </div>
 
-      {/* Aggregated Overview Section */}
-      <Grid container spacing={3} sx={{ mb: 5 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title="Total Clients" value={overview?.total_clients.toString() || 'N/A'} icon={<GroupsIcon color="primary" />} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard 
-              title="Total Revenue (GBP)" 
-              value={formatCurrency(overview?.total_revenue_gbp || 0)} 
-              icon={<AccountBalanceWalletIcon color="success" />} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard title="Pending Compliance" value={overview?.compliance_pending_count.toString() || 'N/A'} icon={<WarningIcon color="warning" />} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard 
-            title="Last Ingestion" 
-            value={overview?.last_ingestion_time ? new Date(overview.last_ingestion_time).toLocaleTimeString() : 'N/A'} 
-            icon={<AccessTimeIcon color="action" />}
-          />
-        </Grid>
-      </Grid>
+      {/* Monthly Chart */}
+      <div className="mb-6 bg-white p-4 rounded shadow">
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">Monthly Payments</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={summary?.monthly || []} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+            <XAxis dataKey="month" tickFormatter={m => `Month ${m}`} />
+            <YAxis />
+            <Tooltip formatter={v => `$${v}`} />
+            <Bar dataKey="total" onClick={handleBarClick}>
+              {(summary?.monthly || []).map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={index === selectedBar ? '#82ca9d' : '#8884d8'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-      {/* Agent-Specific View Section */}
-      <Card sx={{ p: 4 }}>
-        <Typography variant="h5" component="h2" sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', pb: 1 }}>
-          Agent Details & AI Workflow
-        </Typography>
+      {/* Tables: Payments & Invoices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Payments */}
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-xl font-semibold mb-3 text-gray-700">Payments</h2>
+          <div className="mb-3 flex flex-col sm:flex-row gap-2">
+            <select
+              value={paymentsStatus}
+              onChange={e => { setPaymentsStatus(e.target.value); setPaymentsOffset(0); }}
+              className="border p-2 rounded text-sm"
+            >
+              <option value="">All Status</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPaymentsOffset(p => Math.max(0, p - limit))}
+                className="bg-gray-200 px-3 py-2 rounded text-sm"
+                disabled={paymentsOffset <= 0}
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setPaymentsOffset(p => p + limit)}
+                className="bg-gray-200 px-3 py-2 rounded text-sm"
+                disabled={(payments?.length || 0) < limit}
+              >
+                Next
+              </button>
+              <span className="text-sm p-2">Page {paymentsOffset / limit + 1}</span>
+            </div>
+          </div>
+          {pLoading ? (
+            <p className="text-gray-500">Loading...</p>
+          ) : pError ? (
+            <p className="text-red-500">Error loading payments</p>
+          ) : !payments?.length ? (
+            <p className="text-gray-500">No payments found</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-100">
+                    <th className="p-2 text-left font-semibold">ID</th>
+                    <th className="p-2 text-left font-semibold">Amount</th>
+                    <th className="p-2 text-left font-semibold">Date</th>
+                    <th className="p-2 text-left font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map(p => (
+                    <tr key={p.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2">{p.id}</td>
+                      <td className="p-2">${p.amount.toFixed(2)}</td>
+                      <td className="p-2">{format(new Date(p.date), 'yyyy-MM-dd')}</td>
+                      <td className="p-2">{p.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
-        {/* Agent Selector */}
-        <Box display="flex" alignItems="center" gap={2} sx={{ mb: 4 }}>
-          <TextField
-            label="Enter Agent ID"
-            variant="outlined"
-            size="small"
-            value={inputAgentId}
-            onChange={(e) => setInputAgentId(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleFetchAgent();
-            }}
-          />
-          <Button 
-            onClick={handleFetchAgent}
-            disabled={loading || !inputAgentId}
-            variant="contained"
-          >
-            Fetch Data
-          </Button>
-        </Box>
+        {/* Invoices */}
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-xl font-semibold mb-3 text-gray-700">Invoices</h2>
+          <div className="mb-3 flex flex-col sm:flex-row gap-2">
+            <select
+              value={invoicesStatus}
+              onChange={e => { setInvoicesStatus(e.target.value); setInvoicesOffset(0); }}
+              className="border p-2 rounded text-sm"
+            >
+              <option value="">All Status</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setInvoicesOffset(p => Math.max(0, p - limit))}
+                className="bg-gray-200 px-3 py-2 rounded text-sm"
+                disabled={invoicesOffset <= 0}
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setInvoicesOffset(p => p + limit)}
+                className="bg-gray-200 px-3 py-2 rounded text-sm"
+                disabled={(invoices?.length || 0) < limit}
+              >
+                Next
+              </button>
+              <span className="text-sm p-2">Page {invoicesOffset / limit + 1}</span>
+            </div>
+          </div>
+          {iLoading ? (
+            <p className="text-gray-500">Loading...</p>
+          ) : iError ? (
+            <p className="text-red-500">Error loading invoices</p>
+          ) : !invoices?.length ? (
+            <p className="text-gray-500">No invoices found</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-100">
+                    <th className="p-2 text-left font-semibold">ID</th>
+                    <th className="p-2 text-left font-semibold">Amount</th>
+                    <th className="p-2 text-left font-semibold">Date</th>
+                    <th className="p-2 text-left font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map(i => (
+                    <tr key={i.id} className="border-b hover:bg-gray-50">
+                      <td className="p-2">{i.id}</td>
+                      <td className="p-2">${i.amount.toFixed(2)}</td>
+                      <td className="p-2">{format(new Date(i.date), 'yyyy-MM-dd')}</td>
+                      <td className="p-2">{i.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {loading ? (
-            <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box>
-        ) : agentData ? (
-          <Grid container spacing={4}>
-            
-            {/* AI Summary/Alerts Panel */}
-            <Grid item xs={12} lg={6}>
-              <Card variant="elevation" sx={{ p: 3, backgroundColor: 'rgba(255, 193, 7, 0.05)' }}>
-                <Typography variant="h6" sx={{ color: 'warning.dark', mb: 2, fontWeight: 'medium' }}>
-                  AI Summary & Alerts (LangGraph Simulation)
-                </Typography>
-                
-                <Button 
-                  onClick={() => handleAITrigger('Compliance_Alert')}
-                  disabled={aiLoading}
-                  variant="contained"
-                  color="success"
-                  size="small"
-                  sx={{ mb: 3 }}
-                  startIcon={aiLoading ? <CircularProgress size={16} color="inherit" /> : null}
-                >
-                  {aiLoading ? 'Running AI Agent...' : 'Trigger Compliance Check'}
-                </Button>
+      {/* AI Assistant + Logs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-xl font-semibold mb-3 text-gray-700">AI Assistant</h2>
+          <form onSubmit={handleAiSubmit} className="mb-3 flex gap-2">
+            <input
+              type="text"
+              value={aiQuery}
+              onChange={e => setAiQuery(e.target.value)}
+              placeholder="Ask about data (e.g., 'Show invoices from last month')"
+              className="flex-1 border p-2 rounded text-sm"
+              disabled={aiMutation.isPending}
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600"
+              disabled={aiMutation.isPending || !aiQuery.trim()}
+            >
+              {aiMutation.isPending ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+          {aiMutation.isError && (
+            <p className="text-red-500 text-sm mb-2">Error: {(aiMutation.error as Error).message}</p>
+          )}
+          {aiHistory.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto text-sm">
+              {aiHistory.map((h, i) => (
+                <div key={i} className="border-b pb-2">
+                  <p className="font-semibold text-gray-700">Q: {h.q}</p>
+                  <p className="text-gray-600">A: {h.r}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No queries yet. Try asking about invoices or payments.</p>
+          )}
+        </div>
 
-                {agentData.ai_summaries.length > 0 ? (
-                  <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                    {agentData.ai_summaries.map((summary, index) => (
-                      <Card key={index} variant="outlined" sx={{ mb: 2, borderLeft: 4, borderColor: 'warning.main' }}>
-                        <CardContent sx={{ py: 1.5 }}>
-                          <Typography variant="subtitle2">{summary.summary_type}</Typography>
-                          <Typography variant="body1" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
-                            {summary.text}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            Generated at: {new Date(summary.created_at).toLocaleString()} | Workflow ID: {summary.workflow_id || 'N/A'}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No AI summaries found for this agent. Run a check!</Typography>
-                )}
-              </Card>
-            </Grid>
-
-            {/* Raw Data Observability Panel */}
-            <Grid item xs={12} lg={6}>
-              <Card variant="elevation" sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'medium' }}>
-                  Latest Raw Data Ingestion (Observability)
-                </Typography>
-                {agentData.latest_raw_data_previews.length > 0 ? (
-                  <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #e0e0e0' }}>ID</th>
-                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #e0e0e0' }}>Client</th>
-                          <th style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #e0e0e0' }}>Revenue</th>
-                          <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #e0e0e0' }}>Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {agentData.latest_raw_data_previews.map((data) => (
-                          <tr key={data.id}>
-                            <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{data.id}</td>
-                            <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{data.client_name}</td>
-                            <td style={{ textAlign: 'right', padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{formatCurrency(data.total_revenue)}</td>
-                            <td style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}>{new Date(data.data_ingested_at).toLocaleTimeString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Box>
-                ) : (
-                  <Typography color="textSecondary">No raw ingestion data found for this agent ID.</Typography>
-                )}
-              </Card>
-            </Grid>
-          </Grid>
-        ) : (
-            <Typography color="textSecondary">Enter an Agent ID and click 'Fetch Data' to view details.</Typography>
-        )}
-      </Card>
-    </Container>
+        <div className="bg-white p-4 rounded shadow">
+          <h2 className="text-xl font-semibold mb-3 text-gray-700">Recent Activity Logs</h2>
+          {lLoading ? (
+            <p className="text-gray-500">Loading logs...</p>
+          ) : lError ? (
+            <p className="text-red-500">Error loading logs</p>
+          ) : !logs?.length ? (
+            <p className="text-gray-500">No logs available</p>
+          ) : (
+            <div className="overflow-y-auto max-h-64 text-xs">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-gray-100 sticky top-0">
+                    <th className="p-2 text-left font-semibold">Type</th>
+                    <th className="p-2 text-left font-semibold">Time</th>
+                    <th className="p-2 text-left font-semibold">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log, i) => (
+                    <tr key={i} className="border-b hover:bg-gray-50">
+                      <td className="p-2">{log.type}</td>
+                      <td className="p-2">{format(new Date(log.timestamp), 'HH:mm:ss')}</td>
+                      <td className="p-2 truncate">
+                        {log.prompt ? `Q: ${log.prompt}` : log.count ? `${log.count} items` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
-};
-
-export default DaxterDashboard;
+}
