@@ -15,3 +15,7 @@ build/
 .next/server/app-paths-manifest.json
 .next/prerender-manifest.json
 .next/react-loadable-manifest.json
+
+# Pycache files
+**__pycache__/
+*.pyc
