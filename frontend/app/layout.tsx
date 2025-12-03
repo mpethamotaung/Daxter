@@ -1,16 +1,18 @@
-// frontend/app/layout.tsx
-export const metadata = {
-  title: 'Daxter - Accountant Data Aggregator',
-  description: 'Financial and tax compliance dashboard',
+import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Daxter - OpenTax Accountant Dashboard',
+  description: 'Data Aggregation & AI Insights POC',
 };
+
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      {/* Note: Browser extensions like Grammarly may add data attributes to <body>, causing hydration warnings. This is external and can be ignored during development. */}
       <body>{children}</body>
     </html>
   );

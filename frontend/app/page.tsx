@@ -1,16 +1,10 @@
-// frontend/app/page.tsx
-
-"use client"; // Mark as Client Component
-
 import Dashboard from './Dashboard';
-import ThemeWrapper from './ThemeWrapper'; // Direct import, no dynamic needed
+import ClientProvider from './ClientProvider';
 
-export default function Home() {
+export default function Page() {
   return (
-    <ThemeWrapper>
-      <main className="min-h-screen bg-gray-100 p-8">
-        <Dashboard />
-      </main>
-    </ThemeWrapper>
+    <ClientProvider>
+      <Dashboard />
+    </ClientProvider>
   );
 }
