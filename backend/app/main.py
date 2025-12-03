@@ -1,262 +1,86 @@
-# backend/app/main.py
+from fastapi import FastAPI, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func, extract
+from datetime import datetime, date, timedelta
+from typing import Optional, List
+import random  
 
-import os
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError, SQLAlchemyError
-from typing import AsyncGenerator, Dict, Any, List
-import logging
+from database import get_db, engine
+from models import Base, Payment, Invoice
+from schemas import *
+from seeder import seed_data
 
-#Import the new seeder function
-from .seeder import seed_database
+app = FastAPI(title="Daxter OpenTax POC")
 
-# Imports for SQLAlchemy models and Pydantic schemas
-from sqlalchemy import select, func, text
-from .models import AccountantData, DataSummary 
-# Import all required schemas
-from .schemas import AccountantDataCreate, AccountantDataResponse, DashboardSummary, SummaryRequest, SummaryResponse
-# Import the new asynchronous agent logic module
-from . import async_agents 
+logs: List[dict] = []  # In-memory logs
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+@app.on_event("startup")
+async def startup_event():
+    seed_data()
 
-# --- Database Configuration (ASYNC) ---
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL environment variable is not set.")
-
-# Adjust URL for async support (postgresql+asyncpg://)
-ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
-# Create the asynchronous engine
-engine = create_async_engine(ASYNC_DATABASE_URL, echo=True)
-
-# Create an async session maker
-AsyncSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-# --- Lifespan Context Manager (Startup/Shutdown) ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting up FastAPI application...")
-    try:
-        # Check to confirm the database is reachable
-        async with engine.connect() as conn:
-            # Execute a simple query 
-            await conn.execute(text("SELECT 1"))
-        logger.info("Successfully connected to the PostgreSQL database.")
-
-        # --- DATABASE SEEDING LOGIC ---
-        # Create a session specifically for seeding and commit mock data.
-        async with AsyncSessionLocal() as db_session:
-            await seed_database(db_session, num_agents=3, entries_per_agent=20)
-        logger.info("Database seeding configured for 60 total entries (3 agents x 20 entries each).")
-
-    except OperationalError as e:
-        logger.error(f"Failed to connect to the database on startup: {e}")
-        pass
-    except Exception as e:
-        logger.error(f"An unexpected error occurred during DB connection check: {e}")
-        pass
-
-    yield
-
-    logger.info("Shutting down FastAPI application.")
-
-
-# --- FastAPI Application Initialization ---
-app = FastAPI(
-    title="Daxter API",
-    version="0.1.0",
-    description="Data Ingestion and AI Dashboard Backend.",
-    lifespan=lifespan 
-)
-
-# --- 
-# CORS Configuration (<<< NEW SECTION) 
-# Allow the Next.js frontend running on port 3000 to access the API
-# ---
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000", 
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# --- Database Session Dependency ---
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    session = AsyncSessionLocal()
-    try:
-        yield session
-    except SQLAlchemyError as e:
-        logger.error(f"Database error during session processing: {e}")
-        await session.rollback()
-        raise HTTPException(status_code=500, detail="Database operation failed")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred in get_db: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-    finally:
-        await session.close()
-
-
-# ---
-# API ENDPOINTS (STATUS & INGESTION)
-# ---
-
-@app.get("/", tags=["Status"])
-async def root():
-    return {"project": "Daxter", "status": "Running"}
-
-@app.get("/api/health-check", tags=["Status"])
-async def health_check(db: AsyncSession = Depends(get_db)):
-    try:
-        await db.execute(text("SELECT 1")) 
-        return {"status": "OK", "database": "Connected"}
-    except Exception as e:
-        logger.error(f"Health check failed due to DB query error: {e}")
-        raise HTTPException(status_code=503, detail="Database connection failed during query execution")
-
-@app.post(
-    "/api/data-ingest",
-    response_model=AccountantDataResponse,
-    status_code=201,
-    tags=["Data Ingestion"]
-)
-async def ingest_agent_data(
-    data: AccountantDataCreate,
-    db: AsyncSession = Depends(get_db)
+@app.get("/api/payments", response_model=List[PaymentSchema])
+def get_payments(
+    db: Session = Depends(get_db),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=50),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    status: Optional[str] = None
 ):
-    """
-    Receives and stores new financial data, then triggers the AI analysis workflow.
-    (Simulates the Airflow/Data pull step)
-    """
-    # 1. Persist the raw data to the database
-    db_data = AccountantData(**data.model_dump())
-    db.add(db_data)
-    await db.commit()
-    await db.refresh(db_data) 
+    query = db.query(Payment)
+    if start_date: query = query.filter(Payment.date >= start_date)
+    if end_date: query = query.filter(Payment.date <= end_date)
+    if status: query = query.filter(Payment.status == status)
+    payments = query.order_by(Payment.date.desc()).offset(offset).limit(limit).all()
+    logs.append({"type": "payments", "timestamp": datetime.now().isoformat(), "count": len(payments)})
+    return payments
 
-    # 2. Trigger AI-First Agent Workflow (for Observability)
-    # We intentionally don't await the full analysis here, but just the trigger function
-    workflow_id = await async_agents.trigger_ai_analysis_workflow(db_data.id)
-
-    # Update the data record with the workflow ID for observability
-    db_data.workflow_id = workflow_id
-    await db.commit()
-
-    return db_data
-
-# ---
-# CORE WORKFLOW: AI INTERACTION (NEW)
-# ---
-
-@app.post(
-    "/api/ai-summary", 
-    response_model=SummaryResponse, 
-    tags=["Agent Systems"]
-)
-async def generate_ai_summary_for_agent(
-    request: SummaryRequest, 
-    db: AsyncSession = Depends(get_db)
+@app.get("/api/invoices", response_model=List[InvoiceSchema])
+def get_invoices(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=50),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
 ):
-    """
-    Triggers an AI agent (LangGraph simulation) to analyze recent data and generate a summary or alert.
-    """
-    # Simulates the multi-agent orchestration and LLM integration
-    summary_text = await async_agents.generate_and_save_summary(request, db)
+    query = db.query(Invoice)
+    if start_date: query = query.filter(Invoice.date >= start_date)
+    if end_date: query = query.filter(Invoice.date <= end_date)
+    if status: query = query.filter(Invoice.status == status)
+    invoices = query.order_by(Invoice.date.desc()).offset(offset).limit(limit).all()
+    logs.append({"type": "invoices", "timestamp": datetime.now().isoformat(), "count": len(invoices)})
+    return invoices
 
-    return SummaryResponse(
-        agent_id=request.agent_id, 
-        summary_type=request.summary_type,
-        summary_text=summary_text
-)
+@app.get("/api/summary", response_model=SummarySchema)
+def get_summary(db: Session = Depends(get_db)):
+    total_payments = db.query(func.sum(Payment.amount)).scalar() or 0.0
+    unpaid_invoices = db.query(func.sum(Invoice.amount)).filter(Invoice.status == 'unpaid').scalar() or 0.0
+    monthly = db.query(
+        extract('month', Payment.date).label('month'),
+        func.sum(Payment.amount).label('total')
+    ).group_by(extract('month', Payment.date)).order_by('month').all()
+    monthly_list = [{"month": m.month, "total": float(m.total or 0)} for m in monthly]
+    logs.append({"type": "summary", "timestamp": datetime.now().isoformat()})
+    return SummarySchema(total_payments=total_payments, unpaid_invoices=unpaid_invoices, monthly=monthly_list)
 
-# ---
-# CORE WORKFLOW: DETAILED AGENT QUERY (NEW)
-# ---
+@app.post("/api/ai-assistant", response_model=dict)
+def ai_assistant(request: QuerySchema, db: Session = Depends(get_db)):
+    query_lower = request.query.lower()
+    response = "Understood query."
+    if "invoice" in query_lower and "month" in query_lower:
+        last_month = datetime.now() - timedelta(days=30)
+        results = db.query(Invoice).filter(Invoice.date >= last_month).limit(5).all()
+        response = f"Found {len(results)} recent invoices totaling ~${sum(i.amount for i in results):.2f}"
+    elif "payment" in query_lower:
+        unpaid = db.query(Payment).filter(Payment.status == 'unpaid').count()
+        response = f"There are {unpaid} unpaid payments."
+    else:
+        response = "Try: 'Show invoices from last month' or 'unpaid payments'."
+    log_entry = {"prompt": request.query, "response": response, "timestamp": datetime.now().isoformat()}
+    logs.append(log_entry)
+    return {"response": response}
 
-@app.get(
-    "/api/agent-data/{agent_id}", 
-    response_model=Dict[str, Any], 
-    tags=["Dashboard"]
-)
-async def get_agent_dashboard_data(agent_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Retrieves recent raw data and related AI summaries for a single client/agent.
-    Provides the data for the user-friendly dashboard with observability.
-    """
-
-    # 1. Retrieve recent raw data (Observability)
-    raw_data_stmt = select(AccountantData).where(AccountantData.agent_id == agent_id).order_by(AccountantData.data_ingested_at.desc()).limit(5)
-    raw_data_results = (await db.execute(raw_data_stmt)).scalars().all()
-
-    # 2. Retrieve related AI summaries (Summary/Query capabilities)
-    summaries_stmt = select(DataSummary).where(DataSummary.agent_id == agent_id).order_by(DataSummary.created_at.desc()).limit(5)
-    summaries_results = (await db.execute(summaries_stmt)).scalars().all()
-
-    if not raw_data_results and not summaries_results:
-        raise HTTPException(status_code=404, detail=f"No data or summaries found for Agent ID: {agent_id}")
-
-    return {
-        "agent_id": agent_id,
-        "latest_raw_data_previews": [AccountantDataResponse.model_validate(d).model_dump() for d in raw_data_results],
-        "ai_summaries": [
-            {"summary_type": s.summary_type, "text": s.summary_text, "created_at": s.created_at.isoformat(), "workflow_id": s.workflow_id} 
-            for s in summaries_results
-        ]
- }
-
-# ---
-# DASHBOARD AGGREGATION (Your Existing Endpoint)
-# ---
-
-@app.get(
-    "/api/summary",
-    response_model=DashboardSummary,
-    tags=["Dashboard"]
-)
-async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
-    """
-    Returns key aggregated metrics for the high-level dashboard view.
-    """
-    # ... (Your existing aggregation logic remains here)
-    total_clients_stmt = select(func.count(func.distinct(AccountantData.client_name)))
-    total_clients = (await db.execute(total_clients_stmt)).scalar_one_or_none() or 0
-
-    financial_agg_stmt = select(
-        func.sum(AccountantData.tax_liability),
-        func.sum(AccountantData.total_revenue)
-    )
-    results = (await db.execute(financial_agg_stmt)).one_or_none()
-    total_tax_liability = results[0] if results and results[0] is not None else 0.0
-    total_revenue = results[1] if results and results[1] is not None else 0.0
-
-    pending_count_stmt = select(func.count(AccountantData.id)).where(AccountantData.compliance_status == "Pending")
-    pending_count = (await db.execute(pending_count_stmt)).scalar_one()
-
-    last_ingestion_stmt = select(func.max(AccountantData.data_ingested_at))
-    last_ingestion = (await db.execute(last_ingestion_stmt)).scalar_one_or_none()
-
-    return DashboardSummary(
-        total_clients=total_clients,
-        total_tax_liability_gbp=total_tax_liability,
-        total_revenue_gbp=total_revenue,
-        compliance_pending_count=pending_count,
-        last_ingestion_time=last_ingestion
-    )
+@app.get("/api/agent-logs", response_model=List[LogEntry])
+def get_logs(limit: int = Query(20, ge=1)):
+    return logs[-limit:] if logs else []
