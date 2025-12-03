@@ -13,6 +13,6 @@ Frontend/.next/prerender-manifest.json
 Frontend/.next/react-loadable-manifest.json
 
 # Backend (Python/FastAPI)
-Backend/__pycache__/
-Backend/*.pyc
-Backend/daxter.db  # SQLite DB file (local testing)
+__pycache__/
+*.pyc/
+daxter.db 
