@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://github.com/mpethamotaung/Daxter/frontend/public/logo.png" alt="Daxter Logo">
+  <img src="https://github.com/mpethamotaung/Daxter/blob/main/frontend/public/logo.png" alt="Daxter Logo">
 </p>
 
 # Daxter Project: Accountant Aggregation and Insights Dashboard
