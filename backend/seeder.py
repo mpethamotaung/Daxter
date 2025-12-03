@@ -1,6 +1,5 @@
 import random
 from datetime import datetime, timedelta
-from sqlalchemy import func
 from database import engine, SessionLocal
 from models import Base, Payment, Invoice
 

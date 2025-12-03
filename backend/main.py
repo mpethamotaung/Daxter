@@ -1,22 +1,37 @@
 from fastapi import FastAPI, Depends, Query
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from datetime import datetime, date, timedelta
 from typing import Optional, List
 import random  
 
-from database import get_db, engine
+from database import engine, get_db
 from models import Base, Payment, Invoice
-from schemas import *
+from schemas import PaymentSchema, InvoiceSchema, SummarySchema, QuerySchema, LogEntry
 from seeder import seed_data
 
 app = FastAPI(title="Daxter OpenTax POC")
 
 logs: List[dict] = []  # In-memory logs
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    #Drop tables to avoid stale state, then create fresh
+    print("Dropping old tables if any...")
+    Base.metadata.drop_all(bind=engine)
+    # Startup: Create tables and seed data
+    print("Creating fresh tables...")
+    Base.metadata.create_all(bind=engine)
+    print("Tables created, seeding data...")
     seed_data()
+    print("Startup complete: Tables created and data seeded.")
+    yield
+    print("App shutdown complete")
+
+app = FastAPI(title="Daxter OpenTax POC", lifespan=lifespan)
+
+logs: List[dict] = []  # In-memory logs
 
 @app.get("/api/payments", response_model=List[PaymentSchema])
 def get_payments(
