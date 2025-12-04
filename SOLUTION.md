@@ -37,7 +37,7 @@ was the right engineering decision for a timed take-home.
 
 | Decision | Why? | Trade-off |
 | --- | --- | --- |
-| Dropped Docker | Lost a week to network issues. | Slightly less reproducible, but runs in 10 seconds locally |
+| Dropped Docker | Lost a week to networking issues/ server routing issues. | Slightly less reproducible, but runs in 10 seconds locally |
 | Remove LangGraph/LangSmity | assigment allows mock LLM | Less "impressive" on paper, but 100% requirements met/onscope working|
 | Removed Redux | too complex for 4-hour task | Simple, faster, and cleaner code |
 | In-memory DB (mock data) | Immediate results | No data persistence on app load |
