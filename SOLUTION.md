@@ -1,73 +1,63 @@
-# Daxter Project Architecture and Implementation Rationale
+# SOLUTION.md - Daxter Take-Home Assignment
 
-This document outlines the architectural design, core technology choices, and major trade-offs made during the initial setup of the Daxter project (Account Data Aggregation
-and Insights Dashboard).
+## Why I had to pivot and simplify everything
 
-## Architectural Design: The Decoupled Three-Tier System
+I originaly started with a very complex and ambitious architecture:
 
-The Daxter project utilizes a **decoupled three-tier architecture** with a specialized **AI Agent Layer** integrated into the application logic tier.
-This design ensures separation of concerns, scalability, and independent deployment of the core services.
+- Docker Compose
+- Postgres + Alembic
+- LangGraph
+- LangSmith
+- Redux 
+- Real async agents 
 
-**Key Tiers**
+After 1 week of fighting Docker networking, volume mounts, and 
+dependency hell, I realized I was burning the 4-hour window 
+(or week + extension) on infrastructure trying to build a perfect
+architecure.
 
-| Tier | Services | Primary Role |
+**180 degrees pivot 1 week in:**
+I realized I was trying to go above and beyond. I threw everything 
+away and went 100% local-first, in-memory (SQLite), with a fraction
+of the required dependencies. I shot myself in the foot but the pivot
+was the right engineering decision for a timed take-home.
+
+### Final Architecture 
+
+| Layer | Technology | Reason |
 | --- | --- | --- |
-| Presentation | Next.js, React.js, Material UI, Redux | Provides the user interface, manages client-side state, and handles API calls. |
-| Application Logic & AI | FastAPI, LangGraph, LLM API | Serves as the API gateway, contains all business logic, manages data ingestion, and orchestrates the AI agent workflows. |
-| Data | PostgreSQL, SQLAlchemy | Provides persistent, transactional storage for all ingested financial data and AI agent state/logs. |
+| Backend | FastAPI + SQLAlchemy (in-memory SQLite) | Zero setup, instant reload |
+| Database | "sqlite:///daxter.db" | No file, no migrations, no Alembic needed |
+| AI Assistant | Simple mock | Mock LLM setup allowed |
+| Observability | Python list | Lightweight, meets requirements |
+| Frontend | Next.js 13+ App Router, React Query, Tailwind, and Recharts | Fast, no Redux boilerplate |
+| State Management | React Query (only) | Redux is overkill for such a small project. This is 90% less code, with caching |
 
-## Key Technology Choices & Rationale
+### Key Trade-offs & Justification
 
-| Component | Technology | Rationale |
+| Decision | Why? | Trade-off |
 | --- | --- | --- |
-| Backend API | FastAPI (Python) | Chosen for its high performance, native asynchronous support, and strong tooling with Pydantic for data validation. This is critical for high-throughput data ingestion and responsive API calls for the dashboard. |
-| Database | PostgreSQL | A mature, reliable, and highly scalable relational database, ideal for structured financial and compliance data. |
-| ORM & Driver | SQLAlchemy (async) & asyncpg | Provides robust, object-oriented interaction with the database. The asynchronous setup ensures the API server remains non-blocking during database operations. |
-| Frontend Framework | Next.js | Offers built-in routing, performance optimizations (SSR/SSG), and a strong foundation for a professional, scalable dashboard application. |
-| State Management | Redux Toolkit | Although complex for small projects, Redux provides centralized, predictable state management, which is essential for handling real-time data streams, dashboard synchronization, and AI chat history in a complex application. |
-| Orchestration | LangGraph | Specifically selected for its ability to define and manage complex, stateful, multi-step agentic workflows, moving beyond simple single-call RAG chains. |
+| Dropped Docker | Lost a week to network issues. | Slightly less reproducible, but runs in 10 seconds locally |
+| Remove LangGraph/LangSmity | assigment allows mock LLM | Less "impressive" on paper, but 100% requirements met/onscope working|
+| Removed Redux | too complex for 4-hour task | Simple, faster, and cleaner code |
+| In-memory DB (mock data) | Immediate results | No data persistence on app load |
+| Simple string AI mock | Works withou API keys | No real AI data, but it demonstrates understanding of flow |
 
-## Major Assumptions and Tradeoffs
+### What I actually delivered 
 
-**Assumptions**
+- `/api/payments` & `/api/invoices` Paginated & filterable
+- `/api/summary` Monthly totals & Monthly breadowns
+- `api/ai-assistant` Accepts query and returns relevant answer using DB data
+- `api/agent-logs` Shows activity log (clicks & queries)
+- Dashboard with summary cards, two tables, Recharts bar chart, AI chat, activity log
+- Github repo containing the code, readme, solution, and loom video
 
-- **No Authentication:** As this is an MVP, all authentication and authorization logic has been omitted to focus purely on the core data ingestion and AI interaction features.
-- **Development Environment:** The primary development environment is assumed to be **containerised** using Docker Compose for maximum consistency and ease of setup.
-- **External Agents are Mocked:** The "Agent Data Sources" are mocked external entities that will hit a single ingestion endpoint ( **/api/data-ingestion**).
+### Final Note 
 
-**Tradeoffs**
+I could have kept the professional over-engineered version and submitted a broken, incomplete, or barely-working demo. Instead, I took a risk and made a pivot to ship a clean, complete, working solution.
 
-| Decision | Rationale for Choice | Tradeoff Incurred |
-| --- | --- | --- |
-| FastAPI vs. Django | **High Performance & Minimalist.** FastAPI requires less boilerplate, allowing faster setup and development of micro-APIs. | Requires more manual configuration (e.g., routing, ORM setup) compared to the "batteries-included" nature of Django. |
-| Docker Isolation | **Reproducibility.** Ensures the exact same versions of Python, Node, and Postgres run everywhere. | Adds complexity to the initial setup (multiple Dockerfiles, Docker Compose config) and slight overhead during development compared to local binaries. |
-| Redux in Demo | Future Scalability. Prepares the UI for complex real-time data handling (dashboard metrics, live agent status). | **Overkill for a simple demo.** Increases boilerplate code for basic state management. |
+I went way beyond the 4 hours/1 week because I'm so used to building scalable & maintainable applications while avoiding technical debt with a monolithic architecture. But I realized that I have to ruthlessly cut the scope, deliver it fast and make it reproduceable.
 
-## AI Workflow and Implementation Strategy
+I hope that my mistakes have not affected my application because I really wanted to show how multi versed I am in this domain. 
 
-**The AI Agent Layer**
-
-The core Ai feature is the natural language assistant accessible via the **/api/ai-assistant** endpoint. This is implemented using **LangGraph** to manage a multi-step workflow capable of:
-
-1. **Query Translation (Reasoning):** Translating the user's natural language question (e.g., "What was the total tax liability for clients in Q3?") into an executable structured tool call (e.g., a SQL query).
-
-2. **Tool Use (Action):** Executing the generated SQL query via **FastAPI/SQLAlchemy** agaist the PostgreSQL database.
-
-3. **Response Synthesis (Generation):** Taking the raw database result and synthesizing a natural language answer for the user.
-
-**LLM API Mocking Strategy**
-
-For the initial setup phase, the system handles the external **LLM API** connection as follows:
-
-- **Configuration:** The necessary endpoint is defined in the environment via the **API_KEY** in the **.env** file.
-- **Code Integrity:** The **backend/app/main.py** file successfully imports the required LangChain/LangGraph libraries, indicating the environment is provisioned for AI.
-- **Current Mocking:** The logic for AI interaction at **/api/ai-assistant** is **currently unemplemented**. The setup phase focuses on ensuring the database and API connectivity are working.
-- **Next Step (Implementation):** The full AI workflow will be implemented in a dedicated file **backend/app/agent.py**. If the **API_KEY** is not present which it is in this case, the agent logic will be designed to return a mocked response (e.g., a simple hardcoded string) or raise a specific 400 error, allowing the frontend to be developed without a live API key. This approach **mocks the result** until the API key is provided and the logic is fully functional.
-
-
-
-
-
-
-
-
+Thank you for the your consideration.
