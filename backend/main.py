@@ -11,7 +11,7 @@ from models import Base, Payment, Invoice
 from schemas import PaymentSchema, InvoiceSchema, SummarySchema, QuerySchema, LogEntry
 from seeder import seed_data
 
-app = FastAPI(title="Daxter OpenTax POC")
+app = FastAPI(title="Daxter Dashboard")
 
 logs: List[dict] = []  # In-memory logs
 

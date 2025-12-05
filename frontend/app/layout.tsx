@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Daxter - OpenTax Accountant Dashboard',
-  description: 'Data Aggregation & AI Insights POC',
+  description: 'Data Aggregation & AI Insights',
 };
 
 export default function RootLayout({

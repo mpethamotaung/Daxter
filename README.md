@@ -14,7 +14,10 @@ A proof-of-concept for OpenTax, simulating real-time financial and tax data aggr
 1. **Clone the Repository & Configure**
 
 #Clone the repository
-git clone https://github.com/mpethamotaung/Daxter
+
+```
+git clone https://github.com/mpethamotaung/Daxter.git
+```
 
 On terminal, navigate to location where you cloned the project
 ```
